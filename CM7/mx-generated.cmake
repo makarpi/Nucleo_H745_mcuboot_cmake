@@ -24,6 +24,7 @@ set(MX_Include_Dirs
 set(MX_Application_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/main.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/boot_jump.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/boot_status_leds.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/keys.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/mcuboot_platform_logging.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/root-ec-p256-pub.c

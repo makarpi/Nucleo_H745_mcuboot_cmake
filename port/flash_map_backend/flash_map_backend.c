@@ -9,7 +9,7 @@
 #include "flash_map_backend/flash_map_backend.h"
 #include "sysflash/sysflash.h"
 #include "mcuboot_config/mcuboot_logging.h"
-
+#include "boot_status_leds.h"
 #include "stm32h7xx_hal.h"
 #include <string.h>
 #include <stdint.h>
@@ -203,11 +203,14 @@ int flash_area_write(const struct flash_area *fa, uint32_t off, const void *src,
         memcpy(flashword, &in[pos], STM32_FLASH_WRITE_ALIGN);
 
         stm32_flash_clear_flags();
+        boot_leds_flash_write_pulse(fa->fa_id, abs_addr);
 
         if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_FLASHWORD,
                               abs_addr,
                               (uint32_t)flashword) != HAL_OK) {
-            HAL_FLASH_Lock();
+                                boot_leds_set_error(BOOT_LED_ERR_FLASH_WRITE);
+
+                                HAL_FLASH_Lock();
             return -1;
         }
     }
@@ -289,15 +292,22 @@ int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
         erase.VoltageRange = FLASH_VOLTAGE_RANGE_3;
 #endif
 
+        boot_leds_flash_erase_begin(fa->fa_id, abs_addr);
+
         stm32_flash_clear_flags();
 
         HAL_StatusTypeDef st = HAL_FLASHEx_Erase(&erase, &sector_error);
-
+        
+        boot_leds_flash_erase_end(fa->fa_id, abs_addr, st == HAL_OK);
+        
         if (st != HAL_OK) {
             MCUBOOT_LOG_ERR("flash erase failed: st=%ld sector_error=0x%08lX HAL_Error=0x%08lX",
                             (long)st,
                             (unsigned long)sector_error,
                             (unsigned long)HAL_FLASH_GetError());
+            
+            boot_leds_set_error(BOOT_LED_ERR_FLASH_ERASE);
+
             HAL_FLASH_Lock();
             return -1;
         }

@@ -30,7 +30,7 @@
 #include "bootutil/image.h"
 #include "mcuboot_config/mcuboot_logging.h"
 #include "bootutil/fault_injection_hardening.h"
-
+#include "boot_status_leds.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -112,6 +112,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
+  boot_leds_event(BOOT_LED_EVENT_START);
 
   const struct image_header *hdr = (const struct image_header *)SLOT0_ADDR;
 
@@ -133,14 +134,36 @@ int main(void)
 
   struct boot_rsp rsp;
 
+  const struct image_header *slot1_hdr =
+      (const struct image_header *)0x08100000UL;
+
+  if (slot1_hdr->ih_magic == IMAGE_MAGIC) {
+      boot_leds_event(BOOT_LED_EVENT_SECONDARY_PRESENT);
+  }
+
+  boot_leds_event(BOOT_LED_EVENT_BOOT_GO_START);
+
+  // fih_ret rc = boot_go(&rsp);
+
+  // if (FIH_NOT_EQ(rc, FIH_SUCCESS)) {
+  //     MCUBOOT_LOG_ERR("boot_go failed");
+
+  //     while (1) {
+  //         HAL_Delay(250);
+  //     }
+  // }
+
+  // struct boot_rsp rsp;
   fih_ret rc = boot_go(&rsp);
 
   if (FIH_NOT_EQ(rc, FIH_SUCCESS)) {
-      MCUBOOT_LOG_ERR("boot_go failed");
+      boot_led_error_t led_error = boot_leds_get_error();
 
-      while (1) {
-          HAL_Delay(250);
+      if (led_error == BOOT_LED_ERR_NONE) {
+          led_error = BOOT_LED_ERR_BOOT_GO_FAILED;
       }
+
+      boot_leds_error_loop(led_error);
   }
 
   uint32_t image_addr = STM32_FLASH_BASE_ADDR + rsp.br_image_off;
@@ -151,6 +174,24 @@ int main(void)
   MCUBOOT_LOG_INF("image addr=0x%08lX",   (unsigned long)image_addr);
   MCUBOOT_LOG_INF("header size=0x%08lX",  (unsigned long)rsp.br_hdr->ih_hdr_size);
   MCUBOOT_LOG_INF("jumping to app=0x%08lX", (unsigned long)app_addr);
+
+  /*
+  * Minimalna walidacja diagnostyczna wektora.
+  * SP dla Twojego przypadku był np. 0x24080000.
+  * Reset_Handler powinien być w primary slot.
+  */
+  if ((app_reset < 0x08020000UL) || (app_reset >= 0x08100000UL)) {
+      boot_leds_error_loop(BOOT_LED_ERR_BAD_APP_VECTOR);
+  }
+
+  if ((app_sp < 0x20000000UL) || (app_sp >= 0x30000000UL)) {
+      boot_leds_error_loop(BOOT_LED_ERR_BAD_APP_VECTOR);
+  }
+
+  boot_leds_event(BOOT_LED_EVENT_BOOT_OK);
+  boot_leds_event(BOOT_LED_EVENT_BEFORE_JUMP);
+
+  boot_jump_to_image(app_addr);
 
   boot_jump_to_image(app_addr);
 
