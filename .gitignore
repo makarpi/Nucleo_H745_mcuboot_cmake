@@ -1,0 +1,46 @@
+# Build directories
+build/
+CM7/build/
+Debug/
+Release/
+
+*.cache
+
+# Generated binaries
+*.elf
+*.hex
+*.bin
+*.map
+*.list
+*.lst
+*.o
+*.obj
+*.a
+*.d
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+.ninja_deps
+.ninja_log
+build.ninja
+rules.ninja
+
+# Private keys - NEVER commit
+*.pem
+keys/*.pem
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# IDE / VS Code local settings
+.vscode/settings.json
+.vscode/.cmaketools.json
+
+# OS noise
+.DS_Store
+Thumbs.db
